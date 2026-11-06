@@ -106,45 +106,40 @@ public class CookingPotRecipe implements Recipe<CookingPotRecipeInput> {
 
     @Override
     public boolean matches(CookingPotRecipeInput input, Level world) {
-        var flagHasBottle = false;
-        var flagHasBowl = false;
-        // Skip output and fuel slots
-        for (int i = 2; i < input.stacks.size(); i++) {
-            var stack = input.stacks.get(i);
-            if (stack.is(Items.BOWL)) {
-                flagHasBowl = true;
-            }
-            else if (stack.is(Items.GLASS_BOTTLE)) {
-                flagHasBottle = true;
-            }
-            else {
-                // Check that all ingredients match an input
-                if (!ingredients.stream().anyMatch(ingredient -> stack.isEmpty() || Ingredient.testOptionalIngredient(Optional.of(ingredient), stack))) {
-                    return false;
-                }
-            }
-
-        }
-
-        // Check that all inputs match an ingredient
-        for (var ingredient : ingredients) {
-            if (!input.stacks.stream().anyMatch(stack -> Ingredient.testOptionalIngredient(Optional.of(ingredient), stack))) {
-                return false;
-            }
-        }
-
-        if (ingredients.size() != input.stacks.subList(3, input.stacks.size()).stream().filter(x -> !x.isEmpty()).count()) {
+        if (input == null || input.stacks == null || input.stacks.size() != 8) {
             return false;
         }
 
-        if (this.requiresBottle != flagHasBottle) {
+        // Slot 2 is reserved exclusively for the required bowl or bottle.
+        ItemStack container = input.stacks.get(2);
+
+        if (requiresBowl && requiresBottle) {
             return false;
         }
-        if (this.requiresBowl != flagHasBowl) {
+        if (requiresBowl && !container.is(Items.BOWL)) {
+            return false;
+        }
+        if (requiresBottle && !container.is(Items.GLASS_BOTTLE)) {
+            return false;
+        }
+        if (!requiresBowl && !requiresBottle && !container.isEmpty()) {
             return false;
         }
 
-        return true;
+        // Slots 3–6 contain ingredients. Output and fuel are excluded.
+        List<ItemStack> supplied = new ArrayList<>();
+        for (int slot = 3; slot <= 6; slot++) {
+            ItemStack stack = input.stacks.get(slot);
+            if (!stack.isEmpty()) {
+                supplied.add(stack);
+            }
+        }
+
+        return IngredientAssignment.matches(
+                ingredients,
+                supplied,
+                (ingredient, stack) ->
+                        Ingredient.testOptionalIngredient(Optional.of(ingredient), stack));
     }
 
     public static class Serializer {
