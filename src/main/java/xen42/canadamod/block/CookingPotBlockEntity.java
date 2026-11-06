@@ -251,8 +251,19 @@ public class CookingPotBlockEntity extends BaseContainerBlockEntity implements S
     }
 
     private boolean canAcceptOutput(ItemStack currentOutput, ItemStack resultItem) {
-        return currentOutput.isEmpty() ||
-                (currentOutput.is(resultItem.getItem()) && currentOutput.getMaxStackSize() > currentOutput.getCount() + resultItem.getCount());
+        if (resultItem.isEmpty() || resultItem.getCount() > resultItem.getMaxStackSize()) {
+            return false;
+        }
+
+        if (currentOutput.isEmpty()) {
+            return true;
+        }
+
+        return ItemStack.isSameItemSameComponents(currentOutput, resultItem)
+                && xen42.canadamod.recipe.OutputStackCapacity.canFit(
+                        currentOutput.getCount(),
+                        resultItem.getCount(),
+                        currentOutput.getMaxStackSize());
     }
 
     /// Called when crafting bar time is up
@@ -271,7 +282,8 @@ public class CookingPotBlockEntity extends BaseContainerBlockEntity implements S
             if (blockEntity.canAcceptOutput(currentOutput, resultItem)) {
                 var finalResult = resultItem.copy();
                 if (!currentOutput.isEmpty()) {
-                    finalResult = new ItemStack(finalResult.getItem(), finalResult.getCount() + currentOutput.getCount());
+                    finalResult = currentOutput.copy();
+                    finalResult.setCount(currentOutput.getCount() + resultItem.getCount());
                 }
 
                 blockEntity.setItem(CookingPotScreenHandler.OUTPUT_SLOT, finalResult);
